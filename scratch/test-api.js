@@ -42,7 +42,7 @@ async function runTests() {
   console.log("");
 
   // Test Case 2: POST request missing API Key (Expected Error)
-  console.log("Test Case 2: POST request without GROQ_API_KEY")
+  console.log("Test Case 2: POST request without GEMINI_API_KEY")
   const req2 = {
     method: 'POST',
     body: { message: "Tell me about Tanya." }
@@ -50,7 +50,7 @@ async function runTests() {
   const res2 = new MockResponse();
 
   // Explicitly ensure the key is undefined for this test
-  delete process.env.GROQ_API_KEY;
+  delete process.env.GEMINI_API_KEY;
 
   await handler(req2, res2);
   console.log("✓ Status Code:", res2.statusCode);

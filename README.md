@@ -15,7 +15,7 @@ FramerChatWidget.tsx (Framer UI)
 Vercel Serverless Endpoint (/api/chat)
        │ (Injects tanya-knowledge.md + System Rules)
        ▼
-Google Gemini API (using secure GROQ_API_KEY env)
+Google Gemini API (using secure GEMINI_API_KEY env)
        │
        ▼
 Returns concise, recruiter-friendly response
@@ -57,7 +57,7 @@ Vercel hosts node functions inside an `api/` directory automatically and is comp
 
 ---
 
-## 2. Adding the `GROQ_API_KEY`
+## 2. Adding the `GEMINI_API_KEY`
 
 To keep your Gemini key safe from public exposure:
 
@@ -65,7 +65,7 @@ To keep your Gemini key safe from public exposure:
 2. Open your Vercel Project Dashboard.
 3. Navigate to **Settings** > **Environment Variables**.
 4. Add the following variable:
-   - **Key**: `GROQ_API_KEY`
+   - **Key**: `GEMINI_API_KEY`
    - **Value**: *[Paste your AI Studio API key]*
 5. Click **Save**.
 6. Trigger a redeploy of your Vercel project (or click **Promote to Production** if needed) to apply the variable.
