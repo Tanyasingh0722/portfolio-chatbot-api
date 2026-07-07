@@ -1,0 +1,9 @@
+{
+  "name": "tanya-portfolio-api",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "api/chat.js",
+  "dependencies": {
+    "groq-sdk": "^1.3.0"
+  }
+}

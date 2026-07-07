@@ -1,0 +1,13 @@
+# Dependency directories
+node_modules/
+
+# Local env files (safety first!)
+.env
+.env.local
+.env.*.local
+
+# Vercel directories
+.vercel
+
+# macOS system files
+.DS_Store
