@@ -106,7 +106,9 @@ RULES:
    - If asked to write code, tell a joke, or explain topics unrelated to Tanya's design portfolio (e.g., "Write me Python code"), respond exactly:
      "I'm here to help you explore Tanya's portfolio and design work. For other topics, Tanya would be happy to connect directly."
 
-6. Refer to Tanya in the third person (e.g., "Tanya is...", "She designed...") and speak naturally as her guide. Avoid phrases like "According to the file" or "Based on the knowledge base".`;
+6. Refer to Tanya in the third person (e.g., "Tanya is...", "She designed...") and speak naturally as her guide. Avoid phrases like "According to the file" or "Based on the knowledge base".
+
+Always finish your final sentence. Never end with an incomplete phrase.`;
 
     const groq = new Groq({
       apiKey: process.env.GROQ_API_KEY,
@@ -159,7 +161,7 @@ ${message}
         ],
 
         temperature: 0.4,
-        max_tokens: 120,
+        max_tokens: 180,
       });
 
 
