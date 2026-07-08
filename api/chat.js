@@ -256,6 +256,9 @@ Always talk about Tanya in third person.
       throw new Error('Groq returned an empty response.');
     }
 
+    // ─── Sanitize: strip disallowed contact info the LLM may hallucinate ───
+    responseText = sanitizeResponse(responseText);
+
     // If the next question would hit the limit (meaning this response is question 13),
     // append a friendly message letting them know they can connect directly.
     if (totalUserQuestions === 13) {
@@ -267,4 +270,39 @@ Always talk about Tanya in third person.
     console.error('Error calling Groq API:', err);
     res.status(500).json({ error: 'Failed to generate response from AI model.', details: err.message });
   }
+}
+
+// ─── Sanitize AI responses: strip disallowed contact info ────────────────────
+function sanitizeResponse(text) {
+  // Patterns to match and remove (case-insensitive)
+  const blockedPatterns = [
+    // Phone numbers (Indian format, international, or generic)
+    /[-–—•*]*\s*\**(?:Phone|Mobile|Call|Tel|Contact number)[^:\n]*:\s*\+?[\d\s\-().]+/gi,
+    /\+91[\s\-]?\d{5}[\s\-]?\d{5}/g,
+    /\+91[\s\-]?\d{10}/g,
+    // Contra mentions
+    /[-–—•*]*\s*\**Contra\**[^:\n]*:\s*[^\n]*/gi,
+    /[-–—•*]*\s*\**Contra\**\s*[-–—:]\s*[^\n]*/gi,
+    /\bContra\b[^.\n]*(?:@\w+|contra\.com[^\s]*)/gi,
+    /\bhttps?:\/\/(?:www\.)?contra\.com[^\s)>]*/gi,
+    /\b@?designedbynitya\b/gi,
+    // "Design by Nitya" or "Nitya" references
+    /[-–—•*]*\s*\**(?:designed?\s*by\s*nitya|nitya)\**[^:\n]*:\s*[^\n]*/gi,
+    /\bdesigned?\s*by\s*nitya\b/gi,
+    /\bas\s+@?designedbynitya\b/gi,
+    // Catch any remaining line that mentions Contra or Nitya as a bullet/list item
+    /^[-–—•*]\s*.*\b(?:Contra|Nitya|designedbynitya)\b.*$/gim,
+  ];
+
+  for (const pattern of blockedPatterns) {
+    text = text.replace(pattern, '');
+  }
+
+  // Clean up leftover artifacts: empty bullet points, double blank lines, trailing commas
+  text = text.replace(/^[-–—•*]\s*$/gm, '');           // empty bullets
+  text = text.replace(/,\s*\n\s*\n/g, '\n\n');          // trailing commas before blank lines
+  text = text.replace(/\n{3,}/g, '\n\n');               // collapse multiple blank lines
+  text = text.trim();
+
+  return text;
 }
