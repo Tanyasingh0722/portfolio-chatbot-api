@@ -7,6 +7,7 @@ interface ChatWidgetProps {
   botName: string;
   greeting: string;
   accentColor: string;
+  botAvatar: string;
   placeholderText: string;
   quickQuestions: string[];
 }
@@ -16,7 +17,8 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     apiUrl = "https://your-portfolio-api.vercel.app/api/chat",
     botName = "Tanya's Portfolio Guide",
     greeting = "Welcome. I am Tanya's virtual guide. You can ask me questions about her design experience, checkout case study, design system work, or collaboration style. How can I guide you today?",
-    accentColor = "#7C3AED",
+    accentColor = "#7C3AED", // Premium violet
+    botAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200", // Default elegant avatar
     placeholderText = "Ask about Tanya's projects, experience...",
     quickQuestions = [
       "Give me Tanya's 30-second summary",
@@ -40,7 +42,6 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
   const [inputValue, setInputValue] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [showTooltip, setShowTooltip] = React.useState(true);
-  const [usedQuestions, setUsedQuestions] = React.useState<Set<string>>(new Set());
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const chatWindowRef = React.useRef<HTMLDivElement>(null);
@@ -83,15 +84,6 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
   const userQuestionsCount = messages.filter(msg => msg.role === "user").length;
   const isLimitReached = userQuestionsCount >= 13;
 
-  // Get 3 suggestion pills (excluding already-used questions)
-  const getSuggestionPills = (): string[] => {
-    const available = quickQuestions.filter(q => !usedQuestions.has(q));
-    if (available.length <= 3) return available;
-    // Pick 3 sequential starting from a rotating offset
-    const offset = usedQuestions.size % (available.length - 2);
-    return available.slice(offset, offset + 3);
-  };
-
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading || isLimitReached) return;
 
@@ -100,9 +92,6 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     setMessages(newMessages);
     setInputValue("");
     setIsLoading(true);
-
-    // Track used questions
-    setUsedQuestions(prev => new Set(prev).add(userMsg));
 
     try {
       const response = await fetch(apiUrl, {
@@ -167,7 +156,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       }
 
       return (
-        <div key={idx} style={{ margin: "4px 0", minHeight: line === "" ? "8px" : "auto" }}>
+        <div key={idx} style={{ margin: "6px 0", minHeight: line === "" ? "12px" : "auto" }}>
           {content}
         </div>
       );
@@ -179,7 +168,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     return parts.map((part, idx) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={idx} style={{ fontWeight: 600, color: "#1A1A1A" }}>
+          <strong key={idx} style={{ fontWeight: 600, color: "#FFFFFF" }}>
             {part.slice(2, -2)}
           </strong>
         );
@@ -187,10 +176,6 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       return part;
     });
   };
-
-  const suggestionPills = getSuggestionPills();
-  const lastMessageIsBot = messages.length > 0 && messages[messages.length - 1].role === "model";
-  const showPills = !isLimitReached && !isLoading && lastMessageIsBot && suggestionPills.length > 0;
 
   return (
     <div style={containerStyle}>
@@ -218,7 +203,8 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
             }}
             aria-label="Open Chatbot Guide"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            {/* Museum/Exhibition Guide Badge Icon */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.9021 3.59005 15.6667 4.59852 17.1197L3.03362 20.2495C2.86877 20.5792 3.12356 20.9659 3.48624 20.9329L7.33235 20.5833C8.75677 20.8546 10.3333 21 12 21Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
@@ -231,15 +217,22 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
           {/* Header */}
           <div style={headerStyle}>
             <div style={botProfileStyle}>
+              <div style={avatarContainerStyle}>
+                {botAvatar ? (
+                  <img src={botAvatar} alt="Tanya" style={avatarStyle} />
+                ) : (
+                  <div style={{ ...avatarStyle, backgroundColor: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                    T
+                  </div>
+                )}
+                <span style={onlineIndicatorStyle} />
+              </div>
               <div>
                 <div style={botNameStyle}>{botName}</div>
-                <div style={botStatusStyle}>
-                  <span style={onlineDotStyle} />
-                  Online
-                </div>
+                <div style={botStatusStyle}>Exhibition Assistant</div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               {/* Question Counter Indicator */}
               <div style={counterIndicatorStyle} title="Remaining questions in this session">
                 {Math.max(0, 13 - userQuestionsCount)} left
@@ -249,7 +242,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
                 style={closeButtonStyle}
                 aria-label="Close Chat"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M18 6L6 18M6 6L18 18" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
@@ -262,27 +255,20 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
               <div
                 key={index}
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+                  ...messageWrapperStyle,
+                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
                 }}
               >
-                {/* Sender label */}
-                <div style={{
-                  fontSize: "10px",
-                  color: "#9CA3AF",
-                  marginBottom: "4px",
-                  fontWeight: 500,
-                  letterSpacing: "0.02em",
-                }}>
-                  {msg.role === "user" ? "You" : botName.split("'")[0] + "'s Guide"}
-                </div>
+                {msg.role !== "user" && (
+                  <img src={botAvatar} alt="Avatar" style={messageAvatarStyle} />
+                )}
                 <div
                   style={{
                     ...messageBubbleStyle,
-                    backgroundColor: msg.role === "user" ? accentColor : "#F5F5F7",
-                    color: msg.role === "user" ? "#FFFFFF" : "#3A3A3C",
+                    backgroundColor: msg.role === "user" ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.03)",
+                    border: msg.role === "user" ? `1px solid ${accentColor}` : "1px solid rgba(255, 255, 255, 0.05)",
                     borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    color: msg.role === "user" ? "#FFFFFF" : "#D1D5DB",
                   }}
                 >
                   {renderMessageContent(msg.message)}
@@ -292,16 +278,8 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
 
             {/* Bouncing Dot Loader */}
             {isLoading && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                <div style={{
-                  fontSize: "10px",
-                  color: "#9CA3AF",
-                  marginBottom: "4px",
-                  fontWeight: 500,
-                  letterSpacing: "0.02em",
-                }}>
-                  Typing...
-                </div>
+              <div style={messageWrapperStyle}>
+                <img src={botAvatar} alt="Avatar" style={messageAvatarStyle} />
                 <div style={loaderBubbleStyle}>
                   <span className="dot" />
                   <span className="dot" style={{ animationDelay: "0.2s" }} />
@@ -309,25 +287,24 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
                 </div>
               </div>
             )}
-
-            {/* Suggestion Pills — inline after last bot message */}
-            {showPills && (
-              <div style={inlinePillsContainerStyle}>
-                {suggestionPills.map((q, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => sendMessage(q)}
-                    className="quick-chip"
-                    style={pillStyle}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-
             <div ref={messagesEndRef} />
           </div>
+
+          {/* Quick Prompts Carousel */}
+          {!isLimitReached && !isLoading && (
+            <div style={chipsContainerStyle} className="custom-scrollbar">
+              {quickQuestions.map((q, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => sendMessage(q)}
+                  className="quick-chip"
+                  style={chipStyle}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Message Input Box */}
           <form onSubmit={handleFormSubmit} style={inputAreaStyle}>
@@ -348,13 +325,13 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
               disabled={isLoading || isLimitReached || !inputValue.trim()}
               style={{
                 ...sendButtonStyle,
-                backgroundColor: inputValue.trim() && !isLoading && !isLimitReached ? accentColor : "#F0F0F2",
+                backgroundColor: inputValue.trim() && !isLoading && !isLimitReached ? accentColor : "rgba(255,255,255,0.03)",
                 cursor: inputValue.trim() && !isLoading && !isLimitReached ? "pointer" : "default",
                 opacity: isLimitReached ? 0.3 : 1,
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke={inputValue.trim() && !isLoading && !isLimitReached ? "#FFFFFF" : "#9CA3AF"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke={inputValue.trim() && !isLoading && !isLimitReached ? "#FFFFFF" : "#4B5563"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </button>
           </form>
@@ -387,6 +364,11 @@ addPropertyControls(FramerChatWidget, {
     title: "Accent Color",
     defaultValue: "#7C3AED",
   },
+  botAvatar: {
+    type: ControlType.String,
+    title: "Avatar URL",
+    defaultValue: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+  },
   placeholderText: {
     type: ControlType.String,
     title: "Placeholder",
@@ -416,26 +398,25 @@ addPropertyControls(FramerChatWidget, {
   }
 });
 
-// ─── React Inline Styles ────────────────────────────────────────────────────────
-
+// React Inline Styles
 const containerStyle: React.CSSProperties = {
   position: "fixed",
   bottom: "24px",
   right: "24px",
   zIndex: 9999,
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
 };
 
 const tooltipStyle: React.CSSProperties = {
-  backgroundColor: "#FFFFFF",
-  border: "1px solid #E8E8EC",
-  color: "#3A3A3C",
+  backgroundColor: "rgba(17, 17, 21, 0.95)",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  color: "#E5E7EB",
   padding: "10px 16px",
   borderRadius: "12px",
   fontSize: "12px",
   fontWeight: 500,
   marginBottom: "12px",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.25)",
   position: "relative",
   animation: "fadeIn 0.4s ease-out",
   whiteSpace: "nowrap",
@@ -447,18 +428,18 @@ const tooltipArrowStyle: React.CSSProperties = {
   right: "22px",
   width: "10px",
   height: "10px",
-  backgroundColor: "#FFFFFF",
-  borderBottom: "1px solid #E8E8EC",
-  borderRight: "1px solid #E8E8EC",
+  backgroundColor: "#111115",
+  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
   transform: "rotate(45deg)",
 };
 
 const toggleButtonStyle: React.CSSProperties = {
-  width: "52px",
-  height: "52px",
+  width: "56px",
+  height: "56px",
   borderRadius: "50%",
   border: "none",
-  boxShadow: "0 4px 20px rgba(124, 58, 237, 0.25)",
+  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -467,67 +448,83 @@ const toggleButtonStyle: React.CSSProperties = {
 };
 
 const chatWindowStyle: React.CSSProperties = {
-  width: "358px",
-  maxWidth: "358px",
-  height: "520px",
-  borderRadius: "16px",
-  border: "1px solid #E8E8EC",
-  backgroundColor: "#FFFFFF",
-  boxShadow: "0 16px 48px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.04)",
+  width: "380px",
+  height: "550px",
+  borderRadius: "18px",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
+  backgroundColor: "rgba(13, 13, 16, 0.92)",
+  backdropFilter: "blur(20px)",
+  WebkitBackdropFilter: "blur(20px)",
+  boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
   transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+  maxWidth: "calc(100vw - 48px)",
   maxHeight: "calc(100vh - 100px)",
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: "16px 18px",
-  borderBottom: "1px solid #F0F0F2",
+  padding: "14px 16px",
+  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  backgroundColor: "#FFFFFF",
+  background: "rgba(255, 255, 255, 0.01)",
 };
 
 const botProfileStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "10px",
+  gap: "12px",
 };
 
-const onlineDotStyle: React.CSSProperties = {
-  display: "inline-block",
-  width: "6px",
-  height: "6px",
+const avatarContainerStyle: React.CSSProperties = {
+  position: "relative",
+  width: "34px",
+  height: "34px",
+};
+
+const avatarStyle: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
   borderRadius: "50%",
-  backgroundColor: "#34C759",
-  marginRight: "5px",
+  objectFit: "cover",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  filter: "grayscale(100%)", // Minimal/museum guide aesthetic
+};
+
+const onlineIndicatorStyle: React.CSSProperties = {
+  position: "absolute",
+  bottom: "0",
+  right: "0",
+  width: "8px",
+  height: "8px",
+  borderRadius: "50%",
+  backgroundColor: "#8B5CF6", // Violet indicator
+  border: "2px solid #0d0d10",
 };
 
 const botNameStyle: React.CSSProperties = {
   fontWeight: 600,
-  fontSize: "14px",
-  color: "#1A1A1A",
-  letterSpacing: "-0.01em",
+  fontSize: "13px",
+  color: "#FFFFFF",
 };
 
 const botStatusStyle: React.CSSProperties = {
-  fontSize: "11px",
+  fontSize: "10px",
   color: "#9CA3AF",
-  display: "flex",
-  alignItems: "center",
-  marginTop: "1px",
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
 };
 
 const counterIndicatorStyle: React.CSSProperties = {
   fontSize: "10px",
-  color: "#9CA3AF",
-  border: "1px solid #E8E8EC",
+  color: "#6B7280",
+  border: "1px solid rgba(255, 255, 255, 0.08)",
   borderRadius: "10px",
   padding: "2px 8px",
-  backgroundColor: "#FAFAFA",
-  fontWeight: 500,
+  backgroundColor: "rgba(255, 255, 255, 0.02)",
 };
 
 const closeButtonStyle: React.CSSProperties = {
@@ -538,77 +535,86 @@ const closeButtonStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  borderRadius: "6px",
-  transition: "background 0.15s ease",
 };
 
 const messagesAreaStyle: React.CSSProperties = {
   flex: 1,
-  padding: "16px 18px",
+  padding: "16px",
   overflowY: "auto",
   display: "flex",
   flexDirection: "column",
-  gap: "16px",
-  backgroundColor: "#FFFFFF",
+  gap: "14px",
+};
+
+const messageWrapperStyle: React.CSSProperties = {
+  display: "flex",
+  gap: "10px",
+  maxWidth: "85%",
+  alignSelf: "stretch",
+};
+
+const messageAvatarStyle: React.CSSProperties = {
+  width: "26px",
+  height: "26px",
+  borderRadius: "50%",
+  objectFit: "cover",
+  alignSelf: "flex-end",
+  filter: "grayscale(100%)",
 };
 
 const messageBubbleStyle: React.CSSProperties = {
   padding: "10px 14px",
-  fontSize: "13px",
-  lineHeight: "1.55",
+  fontSize: "12px",
+  lineHeight: "1.6",
   wordBreak: "break-word",
-  maxWidth: "88%",
 };
 
 const loaderBubbleStyle: React.CSSProperties = {
-  backgroundColor: "#F5F5F7",
+  backgroundColor: "rgba(255, 255, 255, 0.03)",
+  border: "1px solid rgba(255, 255, 255, 0.05)",
   borderRadius: "16px 16px 16px 4px",
   padding: "10px 16px",
   display: "flex",
-  gap: "5px",
+  gap: "4px",
   alignItems: "center",
 };
 
-const inlinePillsContainerStyle: React.CSSProperties = {
+const chipsContainerStyle: React.CSSProperties = {
+  padding: "0 16px 12px 16px",
   display: "flex",
-  flexDirection: "column",
-  gap: "6px",
-  alignItems: "flex-start",
-  paddingLeft: "2px",
-  marginTop: "-4px",
+  gap: "8px",
+  overflowX: "auto",
+  flexShrink: 0,
 };
 
-const pillStyle: React.CSSProperties = {
-  padding: "7px 14px",
-  borderRadius: "20px",
-  backgroundColor: "#FAFAFA",
-  border: "1px solid #E8E8EC",
-  color: "#6B7280",
-  fontSize: "12px",
+const chipStyle: React.CSSProperties = {
+  padding: "6px 12px",
+  borderRadius: "14px",
+  backgroundColor: "rgba(255,255,255,0.03)",
+  border: "1px solid rgba(255,255,255,0.06)",
+  color: "#9CA3AF",
+  fontSize: "11px",
   cursor: "pointer",
-  whiteSpace: "normal",
-  textAlign: "left",
+  whiteSpace: "nowrap",
   transition: "all 0.2s ease",
-  lineHeight: "1.35",
-  fontWeight: 450,
 };
 
 const inputAreaStyle: React.CSSProperties = {
-  padding: "12px 18px 16px 18px",
+  padding: "12px 16px 16px 16px",
   display: "flex",
   gap: "8px",
-  borderTop: "1px solid #F0F0F2",
-  backgroundColor: "#FAFAFA",
+  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+  background: "rgba(0, 0, 0, 0.2)",
 };
 
 const inputFieldStyle: React.CSSProperties = {
   flex: 1,
-  backgroundColor: "#FFFFFF",
-  border: "1px solid #E8E8EC",
+  backgroundColor: "rgba(255, 255, 255, 0.03)",
+  border: "1px solid rgba(255, 255, 255, 0.06)",
   borderRadius: "10px",
   padding: "10px 14px",
-  color: "#1A1A1A",
-  fontSize: "13px",
+  color: "#FFFFFF",
+  fontSize: "12px",
   outline: "none",
   transition: "border-color 0.2s ease",
 };
@@ -616,7 +622,7 @@ const inputFieldStyle: React.CSSProperties = {
 const sendButtonStyle: React.CSSProperties = {
   width: "36px",
   height: "36px",
-  borderRadius: "10px",
+  borderRadius: "8px",
   border: "none",
   display: "flex",
   alignItems: "center",
@@ -628,25 +634,25 @@ const sendButtonStyle: React.CSSProperties = {
 const customAnimationsAndStyles = (accentColor: string) => `
   .chat-toggle-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 28px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
   }
   .chat-toggle-btn {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .chat-window-fadein {
-    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
   .quick-chip:hover {
-    background-color: #F0ECFB !important;
+    background-color: rgba(255,255,255,0.06) !important;
     border-color: ${accentColor} !important;
-    color: ${accentColor} !important;
+    color: #FFFFFF !important;
   }
   
   /* Bouncing Dots Loader */
   .dot {
     width: 5px;
     height: 5px;
-    background-color: #C4C4CC;
+    background-color: #9CA3AF;
     border-radius: 50%;
     display: inline-block;
     animation: bounce 1.4s infinite ease-in-out both;
@@ -660,7 +666,7 @@ const customAnimationsAndStyles = (accentColor: string) => `
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(10px) scale(0.98);
+      transform: translateY(12px) scale(0.98);
     }
     to {
       opacity: 1;
@@ -668,7 +674,7 @@ const customAnimationsAndStyles = (accentColor: string) => `
     }
   }
 
-  /* Custom Scrollbar Styles — minimal */
+  /* Custom Scrollbar Styles */
   .custom-scrollbar::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -677,21 +683,10 @@ const customAnimationsAndStyles = (accentColor: string) => `
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.08);
     border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 0, 0, 0.14);
-  }
-
-  /* Input focus state */
-  form input:focus {
-    border-color: ${accentColor} !important;
-    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.08);
-  }
-
-  /* Close button hover */
-  button[aria-label="Close Chat"]:hover {
-    background-color: #F5F5F7 !important;
+    background: rgba(255, 255, 255, 0.15);
   }
 `;
