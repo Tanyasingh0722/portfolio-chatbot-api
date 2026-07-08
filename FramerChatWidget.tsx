@@ -16,7 +16,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     apiUrl = "https://your-portfolio-api.vercel.app/api/chat",
     botName = "Tanya's Portfolio Guide",
     greeting = "Welcome. I am Tanya's virtual guide. You can ask me questions about her design experience, checkout case study, design system work, or collaboration style. How can I guide you today?",
-    accentColor = "#3363BB",
+    accentColor = "#7C3AED",
     placeholderText = "Ask about Tanya's projects, experience...",
     quickQuestions = [
       "Give me Tanya's 30-second summary",
