@@ -9,56 +9,104 @@ interface ChatWidgetProps {
   accentColor: string;
   botAvatar: string;
   placeholderText: string;
-  quickQuestions: string[];
   fabGif: string;
+  currentPage: string;
 }
 
-// ─── Pre-Saved Answers for Suggestion Pills ─────────────────────────────────
-// These are returned instantly when a user clicks a suggestion pill,
-// bypassing the Groq API entirely to save on budget and improve speed.
-const CACHED_ANSWERS: Record<string, string> = {
-  "tell me about tanya":
-    "Tanya is a Product Designer with a Computer Science background. She works across SaaS, fintech, and data-heavy web products.\n\nShe's currently a Product Designer at Rentickle, where she's worked on end-to-end projects including checkout redesigns, payment flows, and KYC systems. Her CS background means she thinks in components, codes basic front-end, and bridges the gap between design and what actually ships.",
+// ─── Page-Aware Suggestion Pills & Cached Answers ───────────────────────────
+// Each page gets exactly 3 curated pills with pre-saved answers.
+// Cached answers are shown after a brief simulated delay (~800ms)
+// so they feel AI-generated rather than pre-saved.
 
-  "see case studies":
-    "Here are Tanya's key projects:\n\n- **Rentickle: Payment & Protection Plans** — Moved advance payment and protection plan choices upfront. Confirmed orders roughly doubled, and 82% opted into the Protection Plan.\n- **Rentickle: Checkout Redesign** — Merged a multi-step checkout into a single page. Checkout time dropped 42%, KYC drop-off fell 48%.\n- **Canopy** — A live spending app she built solo. You have to draw something before logging a purchase to interrupt impulse spending.",
+interface PageConfig {
+  pills: string[];
+  cached: Record<string, string>;
+}
 
-  "why should we hire tanya?":
-    "Tanya is a product designer who connects user problems, business needs, and technical constraints.\n\nShe has worked on e-commerce experiences, internal SaaS tools, and design systems while collaborating closely with product and engineering teams.\n\nShe is also exploring AI workflows and design engineering to improve how products are built.",
+const PAGE_CONFIG: Record<string, PageConfig> = {
+  home: {
+    pills: [
+      "Tell me about Tanya",
+      "See case studies",
+      "Why should we hire Tanya?",
+    ],
+    cached: {
+      "tell me about tanya":
+        "Tanya is a Product Designer with a Computer Science background. She works across SaaS, fintech, and data-heavy web products.\n\nShe's currently a Product Designer at Rentickle, where she's worked on end-to-end projects including checkout redesigns, payment flows, and KYC systems. Her CS background means she thinks in components, codes basic front-end, and bridges the gap between design and what actually ships.",
+      "see case studies":
+        "Here are Tanya's key projects:\n\n- **Rentickle: Payment & Protection Plans** — Moved advance payment and protection plan choices upfront. Confirmed orders roughly doubled, and 82% opted into the Protection Plan.\n- **Rentickle: Checkout Redesign** — Merged a multi-step checkout into a single page. Checkout time dropped 42%, KYC drop-off fell 48%.\n- **Rentickle: KYC & Account** — Replaced broken email-based KYC with a step-by-step flow and reorganized order info into clear tabs.",
+      "why should we hire tanya?":
+        "Tanya is a product designer who connects user problems, business needs, and technical constraints.\n\nShe has worked on e-commerce experiences, internal SaaS tools, and design systems while collaborating closely with product and engineering teams.\n\nShe is also exploring AI workflows and design engineering to improve how products are built.",
+    },
+  },
 
-  "which case study should i review first?":
-    "Start with the **Rentickle Checkout Redesign**. It's the strongest example of Tanya's end-to-end product thinking — she identified a 9.8% completion rate problem, redesigned the flow into a single page, and the results were measurable (42% faster checkout, 48% less KYC drop-off).\n\nIf you're interested in strategic product decisions, the **Payment & Protection Plans** project is a great follow-up.",
+  about: {
+    pills: [
+      "What are Tanya's key skills?",
+      "How does Tanya work with engineers?",
+      "What tools does Tanya use?",
+    ],
+    cached: {
+      "what are tanya's key skills?":
+        "Tanya specializes in end-to-end UX, product strategy, dashboards, data-heavy screens, and design systems. She's comfortable with high-stakes transactional flows like checkout and payments, and dense internal tools.\n\nHer CS background means she can code basic front-end and thinks in components.",
+      "how does tanya work with engineers?":
+        "Tanya's CS background means she speaks their language. She structures Figma files for clean handoff, thinks in components, understands technical constraints, and focuses on reducing the back-and-forth that usually slows teams down.",
+      "what tools does tanya use?":
+        "Figma is her main tool. She also uses InDesign, Photoshop, Illustrator, and After Effects.\n\nOn the code side — HTML, CSS, and basic React. She also works with Framer and Webflow for no-code builds.",
+    },
+  },
 
-  "show tanya's biggest product impact":
-    "The biggest measurable impact was the **Rentickle Payment & Protection Plans** redesign. By moving advance payment and protection plan choices upfront onto the product page and cart, confirmed orders roughly doubled and 82% of users opted into the Protection Plan.\n\nThe **Checkout Redesign** is a close second — checkout time dropped 42% and KYC drop-off fell 48%.",
+  "case-protection": {
+    pills: [
+      "Brief me on this project",
+      "What problem was being solved?",
+      "What was the impact?",
+    ],
+    cached: {
+      "brief me on this project":
+        "Advance payment and protection plan choices were hidden until a manual credit check at checkout. Tanya moved those decisions upfront onto the product page and cart, letting users customize per item instead of cart-wide.\n\nConfirmed orders roughly doubled, and 82% opted into the Protection Plan.",
+      "what problem was being solved?":
+        "Payment options and protection plans were buried deep in the checkout flow behind a manual credit check. Users couldn't see or choose their payment preference until the very end, which caused drop-offs and confusion.\n\nThe protection plan existed but almost nobody found it.",
+      "what was the impact?":
+        "Confirmed orders roughly doubled after the redesign. 82% of users opted into the Protection Plan when it was presented upfront on the product page, compared to near-zero visibility before.",
+    },
+  },
 
-  "explain her design process":
-    "Tanya doesn't follow one fixed design framework for every project. She adapts based on the problem, timeline, and team.\n\nUsually she starts by understanding user pain points and business goals, discusses constraints with PMs and developers, explores solutions, gets feedback, and improves from there.",
+  "case-checkout": {
+    pills: [
+      "Brief me on this project",
+      "What was wrong with the old checkout?",
+      "What was the impact?",
+    ],
+    cached: {
+      "brief me on this project":
+        "The old checkout had a 9.8% completion rate and took over 6 minutes. Tanya merged it into a single page, added a clear pricing summary upfront, and cut a billing address step most users didn't need.\n\nCheckout time dropped 42% and KYC drop-off fell 48%.",
+      "what was wrong with the old checkout?":
+        "The original checkout was a multi-step flow with a 9.8% completion rate. It took over 6 minutes, had a confusing billing address step, no upfront pricing clarity, and a KYC process that caused nearly half of users to abandon.",
+      "what was the impact?":
+        "Checkout time dropped 42% and KYC drop-off fell 48%. The single-page redesign with upfront pricing gave users clarity and confidence to complete their orders.",
+    },
+  },
 
-  "what products has tanya designed?":
-    "Tanya has worked on several products:\n\n- **Rentickle** — Payment flows, checkout redesign, KYC systems, and account management for a furniture rental platform\n- **Canopy** — A live spending app she built solo using AI-assisted development\n- **Lloyds Banking Research** — Research into financial decision-making and banking advisory flows\n- **Pehel** — A concept app reimagining job portals for Gen Z using conversational AI",
-
-  "tell me about saas experience":
-    "At Rentickle, Tanya worked on internal SaaS-style tools and dashboards — data-heavy screens, account management systems, and complex user journeys.\n\nShe's comfortable with dense information architecture, designing for efficiency in workflows, and building design systems that scale across multiple product areas.",
-
-  "tell me about e-commerce experience":
-    "Tanya's core e-commerce experience comes from Rentickle, a furniture rental platform. She redesigned the entire checkout flow (dropping completion time by 42%), built upfront payment and protection plan selection into product pages, and overhauled the KYC and account sections.\n\nShe's comfortable with high-stakes transactional flows like cart, checkout, and payments.",
-
-  "how does tanya collaborate with developers?":
-    "Tanya's computer science background helps her collaborate better with developers. She thinks in components, understands technical constraints, and focuses on creating designs that can actually be shipped.\n\nShe structures Figma files for clean handoff and tries to reduce the back-and-forth that usually slows teams down.",
-
-  "what are tanya's ai design skills?":
-    "Tanya is actively exploring AI workflows and human-AI interaction design. She built **Canopy**, a live app using AI-assisted, vibe-coded development. She also designed **Pehel**, a concept app using conversational AI to guide teens through job discovery.\n\nShe's learning about agentic design workflows and how AI changes the way products are built.",
-
-  "what is tanya learning currently?":
-    "Right now Tanya is deepening her knowledge in conversion metrics, market research, and agentic design workflows. She's moving toward design engineering and human-AI interaction design.\n\nLong term, she wants to own both design and development across projects, working with a team rather than solo.",
-
-  "is tanya open to opportunities?":
-    "Yes, Tanya is open to new opportunities. She's looking for product design roles where she can work end-to-end with cross-functional teams.\n\nYou can reach her at:\n- **Email**: singhtanya20003@gmail.com\n- **LinkedIn**: https://www.linkedin.com/in/tanyasingh20003/",
-
-  "how can i contact tanya?":
-    "You can reach Tanya through:\n\n- **Email**: singhtanya20003@gmail.com\n- **LinkedIn**: https://www.linkedin.com/in/tanyasingh20003/",
+  "case-account": {
+    pills: [
+      "Brief me on this project",
+      "What was the main problem?",
+      "How did Tanya redesign it?",
+    ],
+    cached: {
+      "brief me on this project":
+        "The account section relied on a broken, email-based document process for KYC. Tanya replaced it with a step-by-step KYC flow offering instant e-KYC and a manual fallback, and reorganized order information into clear tabs.\n\nThis removed the biggest manual bottleneck in the entire flow.",
+      "what was the main problem?":
+        "The existing KYC process required users to email documents back and forth, which was slow, error-prone, and created a massive manual bottleneck for the operations team.\n\nThe account section was also disorganized, making it hard for users to find order information.",
+      "how did tanya redesign it?":
+        "She built a step-by-step KYC flow with two paths: instant e-KYC for quick verification and a manual upload fallback. She also reorganized the account section, putting order info into clear, scannable tabs instead of the previous cluttered layout.",
+    },
+  },
 };
+
+// Simulated delay for cached answers (ms) — makes it feel AI-generated
+const CACHED_RESPONSE_DELAY = 800;
 
 export default function FramerChatWidget(props: ChatWidgetProps) {
   const {
@@ -69,22 +117,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     botAvatar = "",
     placeholderText = "Ask something",
     fabGif = "",
-    quickQuestions = [
-      "Tell me about Tanya",
-      "See case studies",
-      "Why should we hire Tanya?",
-      "Which case study should I review first?",
-      "Show Tanya's biggest product impact",
-      "Explain her design process",
-      "What products has Tanya designed?",
-      "Tell me about SaaS experience",
-      "Tell me about e-commerce experience",
-      "How does Tanya collaborate with developers?",
-      "What are Tanya's AI design skills?",
-      "What is Tanya learning currently?",
-      "Is Tanya open to opportunities?",
-      "How can I contact Tanya?"
-    ]
+    currentPage = "home",
   } = props;
 
   const [isOpen, setIsOpen] = React.useState(false);
@@ -134,18 +167,19 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
   const userQuestionsCount = messages.filter(msg => msg.role === "user").length;
   const isLimitReached = userQuestionsCount >= 13;
 
-  // Get the top 3 suggestions to show — pick contextually from the quickQuestions list
+  // Get the page-specific config (fallback to home)
+  const pageConfig = PAGE_CONFIG[currentPage] || PAGE_CONFIG["home"];
+
+  // Get the top 3 suggestions — page-aware, filters out already-asked
   const getTopSuggestions = (): string[] => {
-    // Filter out questions that the user has already asked
     const askedQuestions = messages
       .filter(msg => msg.role === "user")
       .map(msg => msg.message.toLowerCase());
 
-    const remaining = quickQuestions.filter(
+    const remaining = pageConfig.pills.filter(
       q => !askedQuestions.includes(q.toLowerCase())
     );
 
-    // Return top 3 remaining (these are ordered by recruiter priority)
     return remaining.slice(0, 3);
   };
 
@@ -157,11 +191,15 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     setMessages(newMessages);
     setInputValue("");
 
-    // ✨ Check for a pre-saved answer when the user clicked a suggestion pill
+    // ✨ Check for a pre-saved answer from the current page's cache
     const cacheKey = userMsg.toLowerCase();
-    if (fromSuggestion && CACHED_ANSWERS[cacheKey]) {
-      // Instant response — no API call, no loading spinner, zero cost
-      setMessages(prev => [...prev, { role: "model", message: CACHED_ANSWERS[cacheKey] }]);
+    const cachedAnswer = fromSuggestion ? pageConfig.cached[cacheKey] : undefined;
+    if (cachedAnswer) {
+      // Show loading state briefly so it feels like the AI is thinking
+      setIsLoading(true);
+      await new Promise(resolve => setTimeout(resolve, CACHED_RESPONSE_DELAY));
+      setMessages(prev => [...prev, { role: "model", message: cachedAnswer }]);
+      setIsLoading(false);
       return;
     }
 
@@ -524,29 +562,13 @@ addPropertyControls(FramerChatWidget, {
     type: ControlType.Image,
     title: "FAB GIF",
   },
-  quickQuestions: {
-    type: ControlType.Array,
-    title: "Quick Prompts",
-    control: {
-      type: ControlType.String,
-    },
-    defaultValue: [
-      "Tell me about Tanya",
-      "See case studies",
-      "Why should we hire Tanya?",
-      "Which case study should I review first?",
-      "Show Tanya's biggest product impact",
-      "Explain her design process",
-      "What products has Tanya designed?",
-      "Tell me about SaaS experience",
-      "Tell me about e-commerce experience",
-      "How does Tanya collaborate with developers?",
-      "What are Tanya's AI design skills?",
-      "What is Tanya learning currently?",
-      "Is Tanya open to opportunities?",
-      "How can I contact Tanya?"
-    ]
-  }
+  currentPage: {
+    type: ControlType.Enum,
+    title: "Current Page",
+    options: ["home", "about", "case-protection", "case-checkout", "case-account"],
+    optionTitles: ["Home", "About / Skills", "Case: Protection Plans", "Case: Checkout", "Case: Account & KYC"],
+    defaultValue: "home",
+  },
 });
 
 // ─── React Inline Styles ────────────────────────────────────────────────────
