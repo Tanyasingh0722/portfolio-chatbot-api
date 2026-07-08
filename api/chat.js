@@ -1,4 +1,11 @@
 import { knowledgeBase } from './knowledge.js';
+import {
+  matchPreSeeded,
+  findCachedAnswer,
+  cacheAnswer,
+  getKnowledgeHash,
+  isContextDependent,
+} from './cache.js';
 
 export default async function handler(req, res) {
 
@@ -60,6 +67,28 @@ export default async function handler(req, res) {
     return;
   }
 
+  // ─── Layer 1 & 2: Check pre-seeded answers and runtime cache ──────────────
+  // Skip cache for context-dependent follow-ups (2+ prior user messages)
+  const contextDependent = isContextDependent(history);
+
+  if (!contextDependent) {
+    // Layer 1: Pre-seeded answers (hardcoded, always instant)
+    const preSeededAnswer = matchPreSeeded(message);
+    if (preSeededAnswer) {
+      console.log('[Cache] Pre-seeded hit for:', message.substring(0, 50));
+      return res.status(200).json({ response: preSeededAnswer, source: 'pre-seeded' });
+    }
+
+    // Layer 2: Runtime cache (previously asked questions)
+    const currentHash = getKnowledgeHash();
+    const cachedAnswer = findCachedAnswer(message, currentHash);
+    if (cachedAnswer) {
+      console.log('[Cache] Runtime cache hit for:', message.substring(0, 50));
+      return res.status(200).json({ response: cachedAnswer, source: 'cached' });
+    }
+  }
+
+  // ─── Layer 3: Groq API fallback (new questions) ─────────────────────────────
   try {
     // Knowledge base is imported from knowledge.js (bundled by Vercel)
 
@@ -248,7 +277,14 @@ Always talk about Tanya in third person.
       responseText += `\n\n---\n*You have reached the maximum of 13 questions for this chat session. For deeper portfolio discussions or opportunities, feel free to contact Tanya at singhtanya20003@gmail.com.*`;
     }
 
-    res.status(200).json({ response: responseText });
+    // Cache the API response for future similar questions
+    if (!contextDependent) {
+      const currentHash = getKnowledgeHash();
+      cacheAnswer(message, responseText, currentHash);
+      console.log('[Cache] Stored new answer for:', message.substring(0, 50));
+    }
+
+    res.status(200).json({ response: responseText, source: 'api' });
   } catch (err) {
     console.error('Error calling Groq API:', err);
     res.status(500).json({ error: 'Failed to generate response from AI model.', details: err.message });
