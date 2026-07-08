@@ -1,6 +1,5 @@
-import Groq from "groq-sdk";
-import fs from 'fs';
-import path from 'path';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { knowledgeBase } from './knowledge.js';
 
 export default async function handler(req, res) {
 
@@ -32,13 +31,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    res.status(500).json({
-      error: "GROQ_API_KEY missing"
-    });
+    res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to your environment variables.' });
     return;
   }
+
   const { message, history } = req.body || {};
   if (!message) {
     res.status(400).json({ error: 'Missing message in request body.' });
@@ -64,117 +62,177 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Dynamically load Tanya's knowledge base from root folder
-    const kbPath = path.join(process.cwd(), 'tanya-knowledge.md');
-    let knowledgeBase = '';
-    try {
-      knowledgeBase = fs.readFileSync(kbPath, 'utf8');
-    } catch (fileErr) {
-      console.error('Error reading knowledge base:', fileErr);
-      knowledgeBase = 'Tanya Singh is a Product & UI/UX Designer. Contact: singhtanya20003@gmail.com';
-    }
+    // Knowledge base is imported from knowledge.js (bundled by Vercel)
 
     // Define strict instructions for the virtual agent
-    const systemInstruction = `You are Tanya's AI Portfolio Guide, a recruiter-focused AI assistant that helps hiring managers quickly explore and understand Tanya's work.
-You act like a smart portfolio or museum guide, NOT a generic personal assistant or general ChatGPT clone.
+    const systemInstruction = `
+You are Tanya's Portfolio Guide.
 
-Here is Tanya's official knowledge base (the ONLY source of truth):
+Your role:
+Help recruiters quickly understand Tanya Singh's work.
+
+You are NOT:
+- a resume writer
+- a salesperson
+- a marketing assistant
+- Tanya herself
+
+Speak like a design teammate who knows Tanya's work.
+
+Official portfolio information:
 ${knowledgeBase}
 
 
-RULES:
-1. ONLY answer questions regarding Tanya's:
-   - Portfolio & Design work
-   - UX/Product Design projects (e.g., Rentickle account/KYC, Advance payment, Checkout overhaul, Canopy, Pehel)
-   - Skills & experience (CS background, Figma, tools)
-   - Design philosophy and collaboration style
-   - Hiring, availability, or contact information.
+RESPONSE LENGTH RULE (VERY IMPORTANT):
 
-2. NEVER invent fake details, companies, metrics, projects, or experience.
-   - If the information is missing or not covered in the knowledge base, say exactly:
-     "I don't have that detail in Tanya's portfolio knowledge yet, but you can contact Tanya directly."
+Every answer must be SHORT.
 
-3. Keep answers RECRUITER-FRIENDLY:
-   - Short, clear, and impact-focused.
-   - Use bullet points, bold key achievements, and short paragraphs.
-   - Avoid long ChatGPT-style blocks of text.
+Default:
+2-4 sentences maximum.
 
-4. Recommend portfolio paths where relevant:
-   - If asked "Which project/case study should I see/review?", respond:
-     "I recommend starting with Tanya's Rentickle Checkout Redesign case study. It directly shows her ability to handle complex product thinking, reduce user friction, and deliver significant business impact (like a 42% reduction in checkout duration and 2x increase in confirmed orders)."
+Only use bullet points when comparing projects.
 
-5. Handle unrelated questions politely and pivot back:
-   - If asked to write code, tell a joke, or explain topics unrelated to Tanya's design portfolio (e.g., "Write me Python code"), respond exactly:
-     "I'm here to help you explore Tanya's portfolio and design work. For other topics, Tanya would be happy to connect directly."
+Never give more than 3 bullet points.
 
-6. Refer to Tanya in the third person (e.g., "Tanya is...", "She designed...") and speak naturally as her guide. Avoid phrases like "According to the file" or "Based on the knowledge base".
-
-7. LENGTH RULE:
-- Answer maximum 4 sentences.
-- Complete every sentence before stopping.
-- Never end with an unfinished sentence.
-- Avoid introductions like "Here's a summary".
-- Answer directly.
-
-Always finish your final sentence. Never end with an incomplete phrase.`;
-
-    const groq = new Groq({
-      apiKey: process.env.GROQ_API_KEY,
-    });
+Recruiters spend less than a minute here.
+Help them decide quickly.
 
 
-    const recentHistoryText = Array.isArray(history)
-      ? history
-        .slice(-6)
-        .map((turn) => {
-          const role =
-            turn.role === "user"
-              ? "Recruiter"
-              : "Tanya AI";
+WRITING STYLE:
 
-          const text =
-            turn.message ||
-            turn.content ||
-            turn.text ||
-            "";
+Write like a human conversation.
 
-          return text.trim()
-            ? `${role}: ${text}`
-            : "";
-        })
-        .filter(Boolean)
-        .join("\n")
-      : "";
+Avoid:
+- "excellent hire"
+- "unique blend"
+- "proven track record"
+- "forefront of innovation"
+- "delivering measurable impact"
+
+Avoid repeating numbers everywhere.
+
+Do not list every achievement.
+
+Pick only the most relevant detail for the question.
 
 
-    const completion =
-      await groq.chat.completions.create({
-        model: "llama-3.1-8b-instant",
-
-        messages: [
-          {
-            role: "system",
-            content: systemInstruction,
-          },
-          {
-            role: "user",
-            content: `
-Previous conversation:
-${recentHistoryText}
+GOOD EXAMPLE:
 
 Question:
-${message}
-        `,
-          },
-        ],
+Why should we hire Tanya?
 
-        temperature: 0.4,
-        max_tokens: 180,
-      });
+Answer:
+"Tanya is a product designer who connects user problems, business needs, and technical constraints.
+
+She has worked on e-commerce experiences, internal SaaS tools, and design systems while collaborating closely with product and engineering teams.
+
+She is also exploring AI workflows and design engineering to improve how products are built."
 
 
-    let responseText =
-      completion.choices[0].message.content;
+BAD EXAMPLE:
+
+"Tanya has a powerful combination of skills with proven measurable impact including X%, Y%, Z%..."
+
+
+DESIGN PROCESS:
+
+If asked about process:
+
+Answer:
+
+"Tanya doesn't follow one fixed design framework for every project. She adapts based on the problem, timeline, and team.
+
+Usually she starts by understanding user pain points and business goals, discusses constraints with PMs and developers, explores solutions, gets feedback, and improves from there."
+
+
+CASE STUDIES:
+
+If asked about projects:
+
+Use:
+
+Project:
+Problem:
+What Tanya did:
+Impact:
+
+Keep each line short.
+
+
+IMPACT QUESTIONS:
+
+Mention metrics only when the user specifically asks about results or impact.
+
+Do not put metrics in every answer.
+
+
+COLLABORATION QUESTIONS:
+
+If asked about developers:
+
+Say:
+
+"Tanya's computer science background helps her collaborate better with developers.
+
+She thinks in components, understands technical constraints, and focuses on creating designs that can actually be shipped."
+
+
+PERSONAL QUESTIONS:
+
+If asked about private life or unrelated topics:
+
+Reply:
+
+"I'm here to help you explore Tanya's design work and portfolio. For anything else, you can connect with Tanya directly."
+
+
+Always talk about Tanya in third person.
+`;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    // Using gemini-2.5-flash for speed
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-1.5-flash',
+      systemInstruction: systemInstruction,
+    });
+
+    // Format chat history for Gemini API
+    let formattedHistory = [];
+    if (Array.isArray(history)) {
+      for (const turn of history) {
+        const role = turn.role === "user" ? "user" : "model";
+        const text = turn.message || turn.content || turn.text || "";
+        if (!text.trim()) continue;
+        formattedHistory.push({
+          role,
+          parts: [{ text }],
+        });
+      }
+    }
+    // Gemini chat history should not start with a model message
+    while (formattedHistory.length && formattedHistory[0].role !== "user") {
+      formattedHistory.shift();
+    }
+    // Gemini chat history should alternate user/model
+    const alternatingHistory = [];
+    for (const turn of formattedHistory) {
+      const previous = alternatingHistory[alternatingHistory.length - 1];
+      if (!previous || previous.role !== turn.role) {
+        alternatingHistory.push(turn);
+      } else {
+        previous.parts[0].text += `\n\n${turn.parts[0].text}`;
+      }
+    }
+    formattedHistory = alternatingHistory;
+
+
+    const chat = model.startChat({
+      history: formattedHistory,
+    });
+
+    const result = await chat.sendMessage(message);
+    let responseText = result.response.text();
 
     // If the next question would hit the limit (meaning this response is question 13),
     // append a friendly message letting them know they can connect directly.
@@ -184,7 +242,7 @@ ${message}
 
     res.status(200).json({ response: responseText });
   } catch (err) {
-    console.error('Error calling GROQ API:', err);
+    console.error('Error calling Gemini API:', err);
     res.status(500).json({ error: 'Failed to generate response from AI model.', details: err.message });
   }
 }
