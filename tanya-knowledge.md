@@ -1,12 +1,10 @@
 **Who I am**
-I'm Tanya, a Product Designer with a Computer Science background. I work across SaaS, fintech, and data-heavy web products. I'm currently a Product Designer at Rentickle, a furniture rental platform in India, where I got promoted from graphic design intern to product design lead within my first three months.
+I'm Tanya, a Product Designer with a Computer Science background. I work across SaaS, fintech, and data-heavy web products. I'm currently a Product Designer at Rentickle, a furniture rental platform in India, where I got the chance to work on different projects end to end with the team. 
 
 **Contact**
 Email: singhtanya20003@gmail.com
 Phone: +91 9616757131
 
-**Where to find my work**
-My portfolio is at tanya-singh.framer.website. I post process-led design content as @designedbynitya on LinkedIn and Contra.
 
 **Education**
 B.Tech in Computer Science, United College of Engineering and Research, Prayagraj. Graduated 2023.
