@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { knowledgeBase } from './knowledge.js';
 
 export default async function handler(req, res) {
@@ -31,9 +30,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server. Please add it to your environment variables.' });
+    res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server. Please add it to your environment variables.' });
     return;
   }
 
@@ -189,50 +188,59 @@ Reply:
 Always talk about Tanya in third person.
 `;
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-
-    // Using gemini-2.5-flash for speed
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: systemInstruction,
-    });
-
-    // Format chat history for Gemini API
-    let formattedHistory = [];
+    // Format chat history for Groq (OpenAI-compatible format)
+    // Framer sends {role: "user" | "model", message: string}
+    // Groq expects {role: "user" | "assistant", content: string}
+    const formattedHistory = [];
     if (Array.isArray(history)) {
       for (const turn of history) {
-        const role = turn.role === "user" ? "user" : "model";
-        const text = turn.message || turn.content || turn.text || "";
-        if (!text.trim()) continue;
-        formattedHistory.push({
-          role,
-          parts: [{ text }],
-        });
+        const role = turn.role === 'user' ? 'user' : 'assistant';
+        const content = (turn.message || turn.content || turn.text || '').trim();
+        if (!content) continue;
+        // Merge consecutive same-role messages
+        const previous = formattedHistory[formattedHistory.length - 1];
+        if (previous && previous.role === role) {
+          previous.content += `\n\n${content}`;
+        } else {
+          formattedHistory.push({ role, content });
+        }
       }
     }
-    // Gemini chat history should not start with a model message
-    while (formattedHistory.length && formattedHistory[0].role !== "user") {
-      formattedHistory.shift();
-    }
-    // Gemini chat history should alternate user/model
-    const alternatingHistory = [];
-    for (const turn of formattedHistory) {
-      const previous = alternatingHistory[alternatingHistory.length - 1];
-      if (!previous || previous.role !== turn.role) {
-        alternatingHistory.push(turn);
-      } else {
-        previous.parts[0].text += `\n\n${turn.parts[0].text}`;
-      }
-    }
-    formattedHistory = alternatingHistory;
 
+    // Build the messages array for Groq
+    const messages = [
+      { role: 'system', content: systemInstruction },
+      ...formattedHistory,
+      { role: 'user', content: message },
+    ];
 
-    const chat = model.startChat({
-      history: formattedHistory,
+    // Call Groq API (OpenAI-compatible endpoint)
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 512,
+      }),
     });
 
-    const result = await chat.sendMessage(message);
-    let responseText = result.response.text();
+    const data = await groqResponse.json();
+
+    if (!groqResponse.ok) {
+      const errMsg = data?.error?.message || `Groq API error (status ${groqResponse.status})`;
+      throw new Error(errMsg);
+    }
+
+    let responseText = data?.choices?.[0]?.message?.content || '';
+
+    if (!responseText.trim()) {
+      throw new Error('Groq returned an empty response.');
+    }
 
     // If the next question would hit the limit (meaning this response is question 13),
     // append a friendly message letting them know they can connect directly.
@@ -242,7 +250,7 @@ Always talk about Tanya in third person.
 
     res.status(200).json({ response: responseText });
   } catch (err) {
-    console.error('Error calling Gemini API:', err);
+    console.error('Error calling Groq API:', err);
     res.status(500).json({ error: 'Failed to generate response from AI model.', details: err.message });
   }
 }
