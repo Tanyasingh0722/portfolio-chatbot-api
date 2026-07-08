@@ -13,6 +13,53 @@ interface ChatWidgetProps {
   fabGif: string;
 }
 
+// ─── Pre-Saved Answers for Suggestion Pills ─────────────────────────────────
+// These are returned instantly when a user clicks a suggestion pill,
+// bypassing the Groq API entirely to save on budget and improve speed.
+const CACHED_ANSWERS: Record<string, string> = {
+  "tell me about tanya":
+    "Tanya is a Product Designer with a Computer Science background. She works across SaaS, fintech, and data-heavy web products.\n\nShe's currently a Product Designer at Rentickle, where she's worked on end-to-end projects including checkout redesigns, payment flows, and KYC systems. Her CS background means she thinks in components, codes basic front-end, and bridges the gap between design and what actually ships.",
+
+  "see case studies":
+    "Here are Tanya's key projects:\n\n- **Rentickle: Payment & Protection Plans** — Moved advance payment and protection plan choices upfront. Confirmed orders roughly doubled, and 82% opted into the Protection Plan.\n- **Rentickle: Checkout Redesign** — Merged a multi-step checkout into a single page. Checkout time dropped 42%, KYC drop-off fell 48%.\n- **Canopy** — A live spending app she built solo. You have to draw something before logging a purchase to interrupt impulse spending.",
+
+  "why should we hire tanya?":
+    "Tanya is a product designer who connects user problems, business needs, and technical constraints.\n\nShe has worked on e-commerce experiences, internal SaaS tools, and design systems while collaborating closely with product and engineering teams.\n\nShe is also exploring AI workflows and design engineering to improve how products are built.",
+
+  "which case study should i review first?":
+    "Start with the **Rentickle Checkout Redesign**. It's the strongest example of Tanya's end-to-end product thinking — she identified a 9.8% completion rate problem, redesigned the flow into a single page, and the results were measurable (42% faster checkout, 48% less KYC drop-off).\n\nIf you're interested in strategic product decisions, the **Payment & Protection Plans** project is a great follow-up.",
+
+  "show tanya's biggest product impact":
+    "The biggest measurable impact was the **Rentickle Payment & Protection Plans** redesign. By moving advance payment and protection plan choices upfront onto the product page and cart, confirmed orders roughly doubled and 82% of users opted into the Protection Plan.\n\nThe **Checkout Redesign** is a close second — checkout time dropped 42% and KYC drop-off fell 48%.",
+
+  "explain her design process":
+    "Tanya doesn't follow one fixed design framework for every project. She adapts based on the problem, timeline, and team.\n\nUsually she starts by understanding user pain points and business goals, discusses constraints with PMs and developers, explores solutions, gets feedback, and improves from there.",
+
+  "what products has tanya designed?":
+    "Tanya has worked on several products:\n\n- **Rentickle** — Payment flows, checkout redesign, KYC systems, and account management for a furniture rental platform\n- **Canopy** — A live spending app she built solo using AI-assisted development\n- **Lloyds Banking Research** — Research into financial decision-making and banking advisory flows\n- **Pehel** — A concept app reimagining job portals for Gen Z using conversational AI",
+
+  "tell me about saas experience":
+    "At Rentickle, Tanya worked on internal SaaS-style tools and dashboards — data-heavy screens, account management systems, and complex user journeys.\n\nShe's comfortable with dense information architecture, designing for efficiency in workflows, and building design systems that scale across multiple product areas.",
+
+  "tell me about e-commerce experience":
+    "Tanya's core e-commerce experience comes from Rentickle, a furniture rental platform. She redesigned the entire checkout flow (dropping completion time by 42%), built upfront payment and protection plan selection into product pages, and overhauled the KYC and account sections.\n\nShe's comfortable with high-stakes transactional flows like cart, checkout, and payments.",
+
+  "how does tanya collaborate with developers?":
+    "Tanya's computer science background helps her collaborate better with developers. She thinks in components, understands technical constraints, and focuses on creating designs that can actually be shipped.\n\nShe structures Figma files for clean handoff and tries to reduce the back-and-forth that usually slows teams down.",
+
+  "what are tanya's ai design skills?":
+    "Tanya is actively exploring AI workflows and human-AI interaction design. She built **Canopy**, a live app using AI-assisted, vibe-coded development. She also designed **Pehel**, a concept app using conversational AI to guide teens through job discovery.\n\nShe's learning about agentic design workflows and how AI changes the way products are built.",
+
+  "what is tanya learning currently?":
+    "Right now Tanya is deepening her knowledge in conversion metrics, market research, and agentic design workflows. She's moving toward design engineering and human-AI interaction design.\n\nLong term, she wants to own both design and development across projects, working with a team rather than solo.",
+
+  "is tanya open to opportunities?":
+    "Yes, Tanya is open to new opportunities. She's looking for product design roles where she can work end-to-end with cross-functional teams.\n\nYou can reach her at:\n- **Email**: singhtanya20003@gmail.com\n- **LinkedIn**: https://www.linkedin.com/in/tanyasingh20003/",
+
+  "how can i contact tanya?":
+    "You can reach Tanya through:\n\n- **Email**: singhtanya20003@gmail.com\n- **LinkedIn**: https://www.linkedin.com/in/tanyasingh20003/",
+};
+
 export default function FramerChatWidget(props: ChatWidgetProps) {
   const {
     apiUrl = "https://portfolio-chatbot-prfuw2u6l-singhtanya20003-4520s-projects.vercel.app/api/chat",
@@ -102,13 +149,23 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     return remaining.slice(0, 3);
   };
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, fromSuggestion: boolean = false) => {
     if (!text.trim() || isLoading || isLimitReached) return;
 
     const userMsg = text.trim();
     const newMessages = [...messages, { role: "user" as const, message: userMsg }];
     setMessages(newMessages);
     setInputValue("");
+
+    // ✨ Check for a pre-saved answer when the user clicked a suggestion pill
+    const cacheKey = userMsg.toLowerCase();
+    if (fromSuggestion && CACHED_ANSWERS[cacheKey]) {
+      // Instant response — no API call, no loading spinner, zero cost
+      setMessages(prev => [...prev, { role: "model", message: CACHED_ANSWERS[cacheKey] }]);
+      return;
+    }
+
+    // Otherwise, proceed with normal API call
     setIsLoading(true);
 
     try {
@@ -317,7 +374,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
                     {suggestions.map((q, idx) => (
                       <button
                         key={idx}
-                        onClick={() => sendMessage(q)}
+                        onClick={() => sendMessage(q, true)}
                         className="quick-chip"
                         style={chipStyle}
                       >
@@ -364,7 +421,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
                         {suggestions.map((q, idx) => (
                           <button
                             key={idx}
-                            onClick={() => sendMessage(q)}
+                            onClick={() => sendMessage(q, true)}
                             className="quick-chip"
                             style={chipStyle}
                           >
