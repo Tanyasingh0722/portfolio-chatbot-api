@@ -7,10 +7,10 @@ I'm Tanya, a Product Designer with a Computer Science background. I work across 
 
 **Contact**
 Email: singhtanya20003@gmail.com
-Phone: +91 9616757131
+LinkedIn: https://www.linkedin.com/in/tanyasingh20003/
 
 **Where to find my work**
-My portfolio is at tanya-singh.framer.website. I post process-led design content as @designedbynitya on LinkedIn and Contra.
+My portfolio is at tanya-singh.framer.website. I post process-led design content on LinkedIn.
 
 **Education**
 B.Tech in Computer Science, United College of Engineering and Research, Prayagraj. Graduated 2023.

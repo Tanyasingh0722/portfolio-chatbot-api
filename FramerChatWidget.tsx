@@ -14,14 +14,15 @@ interface ChatWidgetProps {
 
 export default function FramerChatWidget(props: ChatWidgetProps) {
   const {
-    apiUrl = "https://your-portfolio-api.vercel.app/api/chat",
-    botName = "Tanya's Portfolio Guide",
-    greeting = "Welcome. I am Tanya's virtual guide. You can ask me questions about her design experience, checkout case study, design system work, or collaboration style. How can I guide you today?",
-    accentColor = "#7C3AED", // Premium violet
-    botAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200", // Default elegant avatar
-    placeholderText = "Ask about Tanya's projects, experience...",
+    apiUrl = "https://portfolio-chatbot-prfuw2u6l-singhtanya20003-4520s-projects.vercel.app/api/chat",
+    botName = "ASK TANYA ✦",
+    greeting = "Hi, I'm Tanya's AI twin. Ask me anything — my work, process, or what makes me tick.",
+    accentColor = "#000000",
+    botAvatar = "",
+    placeholderText = "Ask something",
     quickQuestions = [
-      "Give me Tanya's 30-second summary",
+      "Tell me about Tanya",
+      "See case studies",
       "Why should we hire Tanya?",
       "Which case study should I review first?",
       "Show Tanya's biggest product impact",
@@ -84,6 +85,21 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
   const userQuestionsCount = messages.filter(msg => msg.role === "user").length;
   const isLimitReached = userQuestionsCount >= 13;
 
+  // Get the top 3 suggestions to show — pick contextually from the quickQuestions list
+  const getTopSuggestions = (): string[] => {
+    // Filter out questions that the user has already asked
+    const askedQuestions = messages
+      .filter(msg => msg.role === "user")
+      .map(msg => msg.message.toLowerCase());
+
+    const remaining = quickQuestions.filter(
+      q => !askedQuestions.includes(q.toLowerCase())
+    );
+
+    // Return top 3 remaining (these are ordered by recruiter priority)
+    return remaining.slice(0, 3);
+  };
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading || isLimitReached) return;
 
@@ -101,28 +117,40 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
         },
         body: JSON.stringify({
           message: userMsg,
-          history: newMessages.slice(0, -1), // Sends full conversation history
+          history: newMessages.slice(0, -1),
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to connect to API");
+        // Parse specific error from API
+        const errDetail = data?.details || data?.error || "";
+        if (errDetail.toLowerCase().includes("rate limit")) {
+          throw new Error("rate_limit");
+        }
+        throw new Error(errDetail || "Failed to connect to API");
       }
 
-      const data = await response.json();
       if (data.response) {
         setMessages((prev) => [...prev, { role: "model", message: data.response }]);
       } else {
         throw new Error("Invalid response format");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chatbot API Error:", error);
+      const errMsg = error?.message || "";
+      let userMessage: string;
+
+      if (errMsg === "rate_limit") {
+        userMessage = "I'm getting a lot of questions right now and need a short break. Please try again in a minute or two! Alternatively, contact Tanya directly at singhtanya20003@gmail.com.";
+      } else {
+        userMessage = "I'm having trouble connecting right now. Please try again in a moment, or contact Tanya directly at singhtanya20003@gmail.com.";
+      }
+
       setMessages((prev) => [
         ...prev,
-        {
-          role: "model",
-          message: "I am having trouble connecting to my API right now. Please verify that the server is active, or contact Tanya directly at singhtanya20003@gmail.com!"
-        }
+        { role: "model", message: userMessage }
       ]);
     } finally {
       setIsLoading(false);
@@ -147,7 +175,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       if (isBullet) {
         const bulletText = trimmed.substring(2);
         content = (
-          <li style={{ marginLeft: "12px", marginBottom: "4px" }}>
+          <li style={{ marginLeft: "12px", marginBottom: "4px", fontFamily: "'Roboto Serif', Georgia, serif" }}>
             {parseInlineMarkdown(bulletText)}
           </li>
         );
@@ -156,7 +184,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       }
 
       return (
-        <div key={idx} style={{ margin: "6px 0", minHeight: line === "" ? "12px" : "auto" }}>
+        <div key={idx} style={{ margin: "4px 0", minHeight: line === "" ? "10px" : "auto" }}>
           {content}
         </div>
       );
@@ -168,7 +196,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     return parts.map((part, idx) => {
       if (part.startsWith("**") && part.endsWith("**")) {
         return (
-          <strong key={idx} style={{ fontWeight: 600, color: "#FFFFFF" }}>
+          <strong key={idx} style={{ fontWeight: 700, color: "#1A1A1A", fontFamily: "'Roboto Serif', Georgia, serif" }}>
             {part.slice(2, -2)}
           </strong>
         );
@@ -176,6 +204,13 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       return part;
     });
   };
+
+  // Determine if we should show suggestions (after the last bot reply, not while loading)
+  const shouldShowSuggestions = !isLimitReached && !isLoading && messages.length > 0 && messages[messages.length - 1].role === "model";
+  const suggestions = shouldShowSuggestions ? getTopSuggestions() : [];
+
+  // Check if it's the initial greeting state (only 1 message, the greeting)
+  const isInitialState = messages.length === 1 && messages[0].role === "model";
 
   return (
     <div style={containerStyle}>
@@ -203,7 +238,6 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
             }}
             aria-label="Open Chatbot Guide"
           >
-            {/* Museum/Exhibition Guide Badge Icon */}
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.9021 3.59005 15.6667 4.59852 17.1197L3.03362 20.2495C2.86877 20.5792 3.12356 20.9659 3.48624 20.9329L7.33235 20.5833C8.75677 20.8546 10.3333 21 12 21Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -214,127 +248,164 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
       {/* Chat Window Panel */}
       {isOpen && (
         <div ref={chatWindowRef} style={chatWindowStyle} className="chat-window-fadein">
+
+          {/* ─── Ambient Gradient Blobs (always visible background) ─── */}
+          <div className="ambient-blob blob-1" />
+          <div className="ambient-blob blob-2" />
+          <div className="ambient-blob blob-3" />
+
+
           {/* Header */}
           <div style={headerStyle}>
-            <div style={botProfileStyle}>
-              <div style={avatarContainerStyle}>
-                {botAvatar ? (
-                  <img src={botAvatar} alt="Tanya" style={avatarStyle} />
-                ) : (
-                  <div style={{ ...avatarStyle, backgroundColor: accentColor, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
-                    T
-                  </div>
-                )}
-                <span style={onlineIndicatorStyle} />
-              </div>
-              <div>
-                <div style={botNameStyle}>{botName}</div>
-                <div style={botStatusStyle}>Exhibition Assistant</div>
-              </div>
+            <div style={headerLeftStyle}>
+              <span style={botNameStyle}>{botName}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              {/* Question Counter Indicator */}
-              <div style={counterIndicatorStyle} title="Remaining questions in this session">
-                {Math.max(0, 13 - userQuestionsCount)} left
+            <div style={headerRightStyle}>
+              {/* Dot indicator row */}
+              <div style={dotRowStyle}>
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <span key={i} style={headerDotStyle} />
+                ))}
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                style={closeButtonStyle}
-                aria-label="Close Chat"
+              {/* Question Counter */}
+              <div
+                style={{
+                  ...counterIndicatorStyle,
+                  color: isLimitReached ? "#C53030" : "#888888",
+                }}
+                title="Remaining questions in this session"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18 6L6 18M6 6L18 18" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
+                {isLimitReached ? (
+                  <span style={{ color: "#C53030", fontWeight: 600 }}>0 left</span>
+                ) : (
+                  `${Math.max(0, 13 - userQuestionsCount)} left`
+                )}
+              </div>
             </div>
           </div>
 
           {/* Messages Body */}
           <div style={messagesAreaStyle} className="custom-scrollbar">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                style={{
-                  ...messageWrapperStyle,
-                  justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                }}
-              >
-                {msg.role !== "user" && (
-                  <img src={botAvatar} alt="Avatar" style={messageAvatarStyle} />
-                )}
-                <div
-                  style={{
-                    ...messageBubbleStyle,
-                    backgroundColor: msg.role === "user" ? "rgba(255, 255, 255, 0.08)" : "rgba(255, 255, 255, 0.03)",
-                    border: msg.role === "user" ? `1px solid ${accentColor}` : "1px solid rgba(255, 255, 255, 0.05)",
-                    borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                    color: msg.role === "user" ? "#FFFFFF" : "#D1D5DB",
-                  }}
-                >
-                  {renderMessageContent(msg.message)}
-                </div>
-              </div>
-            ))}
 
-            {/* Bouncing Dot Loader */}
-            {isLoading && (
-              <div style={messageWrapperStyle}>
-                <img src={botAvatar} alt="Avatar" style={messageAvatarStyle} />
-                <div style={loaderBubbleStyle}>
-                  <span className="dot" />
-                  <span className="dot" style={{ animationDelay: "0.2s" }} />
-                  <span className="dot" style={{ animationDelay: "0.4s" }} />
+            {/* Initial greeting state — centered with blobs visible behind */}
+            {isInitialState ? (
+              <div style={greetingCenteredStyle}>
+                <div style={greetingTextStyle}>
+                  {messages[0].message}
                 </div>
+                {/* Initial suggestion pills */}
+                {shouldShowSuggestions && suggestions.length > 0 && (
+                  <div style={greetingSuggestionsStyle}>
+                    {suggestions.map((q, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => sendMessage(q)}
+                        className="quick-chip"
+                        style={chipStyle}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+            ) : (
+              /* Conversation messages */
+              <>
+                {messages.map((msg, index) => (
+                  <div key={index} style={{
+                    position: "relative",
+                    zIndex: 2,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: msg.role === "user" ? "flex-end" : "flex-start",
+                  }}>
+                    {/* User message — right-aligned bubble */}
+                    {msg.role === "user" ? (
+                      <div style={userBubbleStyle}>
+                        {msg.message}
+                      </div>
+                    ) : (
+                      /* Bot reply — left-aligned clean text with label */
+                      <>
+                        <div style={roleLabelStyle}>ASK TANYA</div>
+                        <div
+                          style={{
+                            ...messageContentStyle,
+                            fontFamily: "'Roboto Serif', Georgia, serif",
+                          }}
+                        >
+                          {renderMessageContent(msg.message)}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Show suggestion pills right after last bot reply */}
+                    {msg.role === "model" && index === messages.length - 1 && shouldShowSuggestions && suggestions.length > 0 && (
+                      <div style={suggestionsContainerStyle}>
+                        {suggestions.map((q, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => sendMessage(q)}
+                            className="quick-chip"
+                            style={chipStyle}
+                          >
+                            {q} →
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* Loading State — clean animated bar */}
+                {isLoading && (
+                  <div style={{ position: "relative", zIndex: 2, padding: "12px 0" }}>
+                    <div style={roleLabelStyle}>ASK TANYA</div>
+                    <div className="loading-bar-container">
+                      <div className="loading-bar" />
+                    </div>
+                    <div style={loadingTitleStyle}>Working on your answer.</div>
+                    <div style={loadingSubtitleStyle}>This might take a moment</div>
+                  </div>
+                )}
+              </>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Prompts Carousel */}
-          {!isLimitReached && !isLoading && (
-            <div style={chipsContainerStyle} className="custom-scrollbar">
-              {quickQuestions.map((q, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => sendMessage(q)}
-                  className="quick-chip"
-                  style={chipStyle}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-
           {/* Message Input Box */}
-          <form onSubmit={handleFormSubmit} style={inputAreaStyle}>
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={isLimitReached ? "Conversation limit reached." : placeholderText}
-              disabled={isLoading || isLimitReached}
-              style={{
-                ...inputFieldStyle,
-                cursor: isLimitReached ? "not-allowed" : "text",
-                opacity: isLimitReached ? 0.5 : 1,
-              }}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || isLimitReached || !inputValue.trim()}
-              style={{
-                ...sendButtonStyle,
-                backgroundColor: inputValue.trim() && !isLoading && !isLimitReached ? accentColor : "rgba(255,255,255,0.03)",
-                cursor: inputValue.trim() && !isLoading && !isLimitReached ? "pointer" : "default",
-                opacity: isLimitReached ? 0.3 : 1,
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke={inputValue.trim() && !isLoading && !isLimitReached ? "#FFFFFF" : "#4B5563"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </form>
+          <div style={inputFooterStyle}>
+            <form onSubmit={handleFormSubmit} style={inputAreaStyle}>
+              <div style={inputWrapperStyle}>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={isLimitReached ? "Conversation limit reached." : placeholderText}
+                  disabled={isLoading || isLimitReached}
+                  style={{
+                    ...inputFieldStyle,
+                    cursor: isLimitReached ? "not-allowed" : "text",
+                    opacity: isLimitReached ? 0.5 : 1,
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || isLimitReached || !inputValue.trim()}
+                  style={{
+                    ...sendButtonStyle,
+                    opacity: isLimitReached ? 0.3 : 1,
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+            <div style={disclaimerStyle}>Ask AI can make mistakes.</div>
+          </div>
         </div>
       )}
     </div>
@@ -346,33 +417,33 @@ addPropertyControls(FramerChatWidget, {
   apiUrl: {
     type: ControlType.String,
     title: "API URL",
-    defaultValue: "https://your-portfolio-api.vercel.app/api/chat",
+    defaultValue: "https://portfolio-chatbot-prfuw2u6l-singhtanya20003-4520s-projects.vercel.app/api/chat",
     description: "The Vercel endpoint hosting your api/chat.js endpoint.",
   },
   botName: {
     type: ControlType.String,
     title: "Bot Name",
-    defaultValue: "Tanya's Portfolio Guide",
+    defaultValue: "ASK TANYA ✦",
   },
   greeting: {
     type: ControlType.String,
     title: "Greeting",
-    defaultValue: "Welcome. I am Tanya's virtual guide. You can ask me questions about her design experience, checkout case study, design system work, or collaboration style. How can I guide you today?",
+    defaultValue: "Hi, I'm Tanya's AI twin. Ask me anything — my work, process, or what makes me tick.",
   },
   accentColor: {
     type: ControlType.Color,
     title: "Accent Color",
-    defaultValue: "#7C3AED",
+    defaultValue: "#000000",
   },
   botAvatar: {
     type: ControlType.String,
     title: "Avatar URL",
-    defaultValue: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    defaultValue: "",
   },
   placeholderText: {
     type: ControlType.String,
     title: "Placeholder",
-    defaultValue: "Ask about Tanya's projects, experience...",
+    defaultValue: "Ask something",
   },
   quickQuestions: {
     type: ControlType.Array,
@@ -381,7 +452,8 @@ addPropertyControls(FramerChatWidget, {
       type: ControlType.String,
     },
     defaultValue: [
-      "Give me Tanya's 30-second summary",
+      "Tell me about Tanya",
+      "See case studies",
       "Why should we hire Tanya?",
       "Which case study should I review first?",
       "Show Tanya's biggest product impact",
@@ -398,25 +470,27 @@ addPropertyControls(FramerChatWidget, {
   }
 });
 
-// React Inline Styles
+// ─── React Inline Styles ────────────────────────────────────────────────────
+
 const containerStyle: React.CSSProperties = {
   position: "fixed",
   bottom: "24px",
   right: "24px",
   zIndex: 9999,
-  fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 };
 
 const tooltipStyle: React.CSSProperties = {
-  backgroundColor: "rgba(17, 17, 21, 0.95)",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  color: "#E5E7EB",
+  backgroundColor: "#FFFFFF",
+  border: "1px solid rgba(0, 0, 0, 0.06)",
+  color: "#1A1A1A",
   padding: "10px 16px",
-  borderRadius: "12px",
+  borderRadius: "14px",
   fontSize: "12px",
   fontWeight: 500,
+  fontFamily: "'Inter', sans-serif",
   marginBottom: "12px",
-  boxShadow: "0 4px 15px rgba(0, 0, 0, 0.25)",
+  boxShadow: "0 8px 30px rgba(0, 0, 0, 0.08)",
   position: "relative",
   animation: "fadeIn 0.4s ease-out",
   whiteSpace: "nowrap",
@@ -428,9 +502,9 @@ const tooltipArrowStyle: React.CSSProperties = {
   right: "22px",
   width: "10px",
   height: "10px",
-  backgroundColor: "#111115",
-  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-  borderRight: "1px solid rgba(255, 255, 255, 0.08)",
+  backgroundColor: "#FFFFFF",
+  borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
+  borderRight: "1px solid rgba(0, 0, 0, 0.06)",
   transform: "rotate(45deg)",
 };
 
@@ -439,7 +513,7 @@ const toggleButtonStyle: React.CSSProperties = {
   height: "56px",
   borderRadius: "50%",
   border: "none",
-  boxShadow: "0 4px 20px rgba(0, 0, 0, 0.4)",
+  boxShadow: "0 4px 24px rgba(0, 0, 0, 0.15)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -448,225 +522,391 @@ const toggleButtonStyle: React.CSSProperties = {
 };
 
 const chatWindowStyle: React.CSSProperties = {
-  width: "380px",
-  height: "550px",
-  borderRadius: "18px",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  backgroundColor: "rgba(13, 13, 16, 0.92)",
-  backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
-  boxShadow: "0 12px 40px rgba(0, 0, 0, 0.5)",
+  width: "358px",
+  height: "calc(100vh - 100px)",
+  maxHeight: "700px",
+  borderRadius: "24px",
+  border: "1px solid rgba(0, 0, 0, 0.06)",
+  backgroundColor: "#FAFAFA",
+  boxShadow: "0 20px 60px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.03)",
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
   transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
   maxWidth: "calc(100vw - 48px)",
-  maxHeight: "calc(100vh - 100px)",
+  position: "relative",
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: "14px 16px",
-  borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+  padding: "18px 20px 6px 20px",
   display: "flex",
   justifyContent: "space-between",
-  alignItems: "center",
-  background: "rgba(255, 255, 255, 0.01)",
-};
-
-const botProfileStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: "12px",
-};
-
-const avatarContainerStyle: React.CSSProperties = {
+  alignItems: "flex-start",
   position: "relative",
-  width: "34px",
-  height: "34px",
+  zIndex: 5,
 };
 
-const avatarStyle: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  borderRadius: "50%",
-  objectFit: "cover",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  filter: "grayscale(100%)", // Minimal/museum guide aesthetic
-};
-
-const onlineIndicatorStyle: React.CSSProperties = {
-  position: "absolute",
-  bottom: "0",
-  right: "0",
-  width: "8px",
-  height: "8px",
-  borderRadius: "50%",
-  backgroundColor: "#8B5CF6", // Violet indicator
-  border: "2px solid #0d0d10",
-};
-
-const botNameStyle: React.CSSProperties = {
-  fontWeight: 600,
-  fontSize: "13px",
-  color: "#FFFFFF",
-};
-
-const botStatusStyle: React.CSSProperties = {
-  fontSize: "10px",
-  color: "#9CA3AF",
-  letterSpacing: "0.05em",
-  textTransform: "uppercase",
-};
-
-const counterIndicatorStyle: React.CSSProperties = {
-  fontSize: "10px",
-  color: "#6B7280",
-  border: "1px solid rgba(255, 255, 255, 0.08)",
-  borderRadius: "10px",
-  padding: "2px 8px",
-  backgroundColor: "rgba(255, 255, 255, 0.02)",
-};
-
-const closeButtonStyle: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  cursor: "pointer",
-  padding: "4px",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const messagesAreaStyle: React.CSSProperties = {
-  flex: 1,
-  padding: "16px",
-  overflowY: "auto",
+const headerLeftStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: "14px",
+  gap: "2px",
 };
 
-const messageWrapperStyle: React.CSSProperties = {
+const headerRightStyle: React.CSSProperties = {
   display: "flex",
-  gap: "10px",
-  maxWidth: "85%",
-  alignSelf: "stretch",
+  flexDirection: "column",
+  alignItems: "flex-end",
+  gap: "8px",
 };
 
-const messageAvatarStyle: React.CSSProperties = {
-  width: "26px",
-  height: "26px",
-  borderRadius: "50%",
-  objectFit: "cover",
-  alignSelf: "flex-end",
-  filter: "grayscale(100%)",
-};
-
-const messageBubbleStyle: React.CSSProperties = {
-  padding: "10px 14px",
-  fontSize: "12px",
-  lineHeight: "1.6",
-  wordBreak: "break-word",
-};
-
-const loaderBubbleStyle: React.CSSProperties = {
-  backgroundColor: "rgba(255, 255, 255, 0.03)",
-  border: "1px solid rgba(255, 255, 255, 0.05)",
-  borderRadius: "16px 16px 16px 4px",
-  padding: "10px 16px",
+const dotRowStyle: React.CSSProperties = {
   display: "flex",
   gap: "4px",
   alignItems: "center",
 };
 
-const chipsContainerStyle: React.CSSProperties = {
-  padding: "0 16px 12px 16px",
+const headerDotStyle: React.CSSProperties = {
+  width: "5px",
+  height: "5px",
+  borderRadius: "50%",
+  backgroundColor: "#1A1A1A",
+};
+
+const botNameStyle: React.CSSProperties = {
+  fontFamily: "'Roboto Serif', Georgia, 'Times New Roman', serif",
+  fontWeight: 700,
+  fontSize: "15px",
+  color: "#1A1A1A",
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+};
+
+const counterIndicatorStyle: React.CSSProperties = {
+  fontSize: "10px",
+  color: "#888888",
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 500,
+  letterSpacing: "0.02em",
+};
+
+const messagesAreaStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "16px 22px 8px 22px",
+  overflowY: "auto",
   display: "flex",
+  flexDirection: "column",
+  gap: "22px",
+  position: "relative",
+  zIndex: 2,
+};
+
+// ─── Greeting (initial centered state) ──────────────────────────
+
+const greetingCenteredStyle: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-end",
+  alignItems: "center",
+  textAlign: "center",
+  padding: "0 8px 16px 8px",
+  position: "relative",
+  zIndex: 2,
+};
+
+const greetingTextStyle: React.CSSProperties = {
+  fontFamily: "'Roboto Serif', Georgia, serif",
+  fontSize: "17px",
+  lineHeight: 1.6,
+  color: "#555555",
+  fontWeight: 400,
+  maxWidth: "280px",
+  marginBottom: "20px",
+};
+
+const greetingSuggestionsStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  justifyContent: "center",
   gap: "8px",
-  overflowX: "auto",
-  flexShrink: 0,
+};
+
+// ─── Conversation Styles ────────────────────────────────────────
+
+const roleLabelStyle: React.CSSProperties = {
+  fontSize: "9px",
+  fontWeight: 600,
+  color: "#AAAAAA",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  marginBottom: "6px",
+  fontFamily: "'Inter', sans-serif",
+};
+
+const userBubbleStyle: React.CSSProperties = {
+  backgroundColor: "#1A1A1A",
+  color: "#FFFFFF",
+  fontFamily: "'Inter', sans-serif",
+  fontSize: "13px",
+  fontWeight: 400,
+  lineHeight: "1.5",
+  padding: "10px 16px",
+  borderRadius: "18px 18px 4px 18px",
+  maxWidth: "80%",
+  wordBreak: "break-word",
+};
+
+const messageContentStyle: React.CSSProperties = {
+  fontSize: "14px",
+  lineHeight: "1.7",
+  wordBreak: "break-word",
+  color: "#2D2D2D",
+  fontFamily: "'Inter', sans-serif",
+};
+
+const suggestionsContainerStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: "8px",
+  marginTop: "16px",
 };
 
 const chipStyle: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: "14px",
-  backgroundColor: "rgba(255,255,255,0.03)",
-  border: "1px solid rgba(255,255,255,0.06)",
-  color: "#9CA3AF",
+  padding: "8px 16px",
+  borderRadius: "24px",
+  backgroundColor: "#FFFFFF",
+  border: "1px solid rgba(0, 0, 0, 0.10)",
+  color: "#1A1A1A",
   fontSize: "11px",
+  fontWeight: 500,
+  fontFamily: "'Inter', sans-serif",
   cursor: "pointer",
   whiteSpace: "nowrap",
-  transition: "all 0.2s ease",
+  transition: "all 0.25s ease",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+};
+
+// ─── Loading State ──────────────────────────────────────────────
+
+const loadingContentStyle: React.CSSProperties = {
+  position: "relative",
+  zIndex: 2,
+  padding: "28px 22px",
+};
+
+const loadingTitleStyle: React.CSSProperties = {
+  fontFamily: "'Roboto Serif', Georgia, serif",
+  fontSize: "15px",
+  fontWeight: 500,
+  color: "#1A1A1A",
+  marginBottom: "3px",
+  lineHeight: 1.4,
+};
+
+const loadingSubtitleStyle: React.CSSProperties = {
+  fontSize: "11px",
+  color: "#AAAAAA",
+  fontStyle: "italic",
+  fontFamily: "'Inter', sans-serif",
+};
+
+const loadingContextStyle: React.CSSProperties = {
+  marginTop: "28px",
+  display: "flex",
+  flexDirection: "column",
+  gap: "4px",
+};
+
+const loadingContextLabelStyle: React.CSSProperties = {
+  fontSize: "9px",
+  fontWeight: 600,
+  color: "#AAAAAA",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  fontFamily: "'Inter', sans-serif",
+};
+
+const loadingContextTextStyle: React.CSSProperties = {
+  fontFamily: "'Roboto Serif', Georgia, serif",
+  fontSize: "15px",
+  color: "#1A1A1A",
+  lineHeight: 1.5,
+};
+
+// ─── Input Area ─────────────────────────────────────────────────
+
+const inputFooterStyle: React.CSSProperties = {
+  padding: "0",
+  position: "relative",
+  zIndex: 5,
 };
 
 const inputAreaStyle: React.CSSProperties = {
-  padding: "12px 16px 16px 16px",
+  padding: "12px 16px 4px 16px",
   display: "flex",
+  gap: "0",
+  alignItems: "center",
+};
+
+const inputWrapperStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  width: "100%",
+  backgroundColor: "#111111",
+  borderRadius: "28px",
+  padding: "4px 4px 4px 18px",
   gap: "8px",
-  borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-  background: "rgba(0, 0, 0, 0.2)",
 };
 
 const inputFieldStyle: React.CSSProperties = {
   flex: 1,
-  backgroundColor: "rgba(255, 255, 255, 0.03)",
-  border: "1px solid rgba(255, 255, 255, 0.06)",
-  borderRadius: "10px",
-  padding: "10px 14px",
+  backgroundColor: "transparent",
+  border: "none",
+  padding: "10px 0",
   color: "#FFFFFF",
-  fontSize: "12px",
+  fontSize: "13px",
+  fontFamily: "'Inter', sans-serif",
+  fontWeight: 400,
   outline: "none",
-  transition: "border-color 0.2s ease",
+  letterSpacing: "0.01em",
 };
 
 const sendButtonStyle: React.CSSProperties = {
-  width: "36px",
-  height: "36px",
-  borderRadius: "8px",
+  width: "40px",
+  height: "40px",
+  borderRadius: "50%",
   border: "none",
+  backgroundColor: "#333333",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   transition: "all 0.2s ease",
+  flexShrink: 0,
+  cursor: "pointer",
 };
 
-// CSS styles injected dynamically
+const disclaimerStyle: React.CSSProperties = {
+  textAlign: "center",
+  fontSize: "10px",
+  color: "#CCCCCC",
+  fontFamily: "'Inter', sans-serif",
+  padding: "6px 16px 12px 16px",
+  letterSpacing: "0.01em",
+};
+
+// ─── CSS Animations & Styles ────────────────────────────────────────────────
+
 const customAnimationsAndStyles = (accentColor: string) => `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+
   .chat-toggle-btn:hover {
     transform: scale(1.05);
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
   }
   .chat-toggle-btn {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
   .chat-window-fadein {
-    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
-  .quick-chip:hover {
-    background-color: rgba(255,255,255,0.06) !important;
-    border-color: ${accentColor} !important;
-    color: #FFFFFF !important;
-  }
-  
-  /* Bouncing Dots Loader */
-  .dot {
-    width: 5px;
-    height: 5px;
-    background-color: #9CA3AF;
+
+  /* ─── Ambient Gradient Blobs ─── */
+  .ambient-blob {
+    position: absolute;
     border-radius: 50%;
-    display: inline-block;
-    animation: bounce 1.4s infinite ease-in-out both;
+    filter: blur(60px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 1;
+    animation: blobFloat 8s ease-in-out infinite;
   }
-  @keyframes bounce {
-    0%, 80%, 100% { transform: scale(0); }
-    40% { transform: scale(1.0); }
+
+  .blob-1 {
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(190, 170, 220, 0.6) 0%, rgba(190, 170, 220, 0) 70%);
+    top: 15%;
+    left: 10%;
+    animation-delay: 0s;
+    animation-duration: 9s;
   }
-  
-  /* Slide in/fade in window */
+
+  .blob-2 {
+    width: 180px;
+    height: 180px;
+    background: radial-gradient(circle, rgba(170, 195, 235, 0.5) 0%, rgba(170, 195, 235, 0) 70%);
+    top: 20%;
+    right: 5%;
+    animation-delay: -3s;
+    animation-duration: 11s;
+  }
+
+  .blob-3 {
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(220, 190, 210, 0.45) 0%, rgba(220, 190, 210, 0) 70%);
+    top: 35%;
+    left: 25%;
+    animation-delay: -5s;
+    animation-duration: 10s;
+  }
+
+  @keyframes blobFloat {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    25% {
+      transform: translate(8px, -12px) scale(1.05);
+    }
+    50% {
+      transform: translate(-5px, 8px) scale(0.97);
+    }
+    75% {
+      transform: translate(10px, 5px) scale(1.02);
+    }
+  }
+
+  /* ─── Suggestion Pill Hover ─── */
+  .quick-chip:hover {
+    background-color: #F0F0F0 !important;
+    border-color: #1A1A1A !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    transform: translateY(-1px);
+  }
+
+  /* ─── Loading Bar Animation ─── */
+  .loading-bar-container {
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+
+  .loading-bar {
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, #1A1A1A, transparent);
+    border-radius: 2px;
+    animation: loadingSlide 1.5s ease-in-out infinite;
+  }
+
+  @keyframes loadingSlide {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(350%);
+    }
+  }
+
+  /* ─── Window Entrance ─── */
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(12px) scale(0.98);
+      transform: translateY(16px) scale(0.97);
     }
     to {
       opacity: 1;
@@ -674,7 +914,7 @@ const customAnimationsAndStyles = (accentColor: string) => `
     }
   }
 
-  /* Custom Scrollbar Styles */
+  /* ─── Custom Scrollbar ─── */
   .custom-scrollbar::-webkit-scrollbar {
     width: 3px;
     height: 3px;
@@ -683,10 +923,20 @@ const customAnimationsAndStyles = (accentColor: string) => `
     background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.06);
     border-radius: 10px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  /* ─── Input Placeholder ─── */
+  form input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+  form input:focus {
+    outline: none !important;
   }
 `;

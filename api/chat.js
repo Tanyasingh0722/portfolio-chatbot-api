@@ -54,8 +54,7 @@ export default async function handler(req, res) {
       response: `You've explored a lot of Tanya's work. For deeper portfolio discussions, opportunities, or collaboration, you can connect with Tanya directly:
 
 - **Email**: singhtanya20003@gmail.com
-- **LinkedIn**: https://www.linkedin.com/in/designedbynitya
-- **Contra**: https://contra.com/designedbynitya`
+- **LinkedIn**: https://www.linkedin.com/in/tanyasingh20003/`
     });
     return;
   }
