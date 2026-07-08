@@ -3,7 +3,7 @@ I'm Tanya, a Product Designer with a Computer Science background. I work across 
 
 **Contact**
 Email: singhtanya20003@gmail.com
-Phone: +91 9616757131
+LinkedIn: https://www.linkedin.com/in/tanyasingh20003/
 
 
 **Education**

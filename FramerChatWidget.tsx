@@ -10,6 +10,7 @@ interface ChatWidgetProps {
   botAvatar: string;
   placeholderText: string;
   quickQuestions: string[];
+  fabGif: string;
 }
 
 export default function FramerChatWidget(props: ChatWidgetProps) {
@@ -20,6 +21,7 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
     accentColor = "#000000",
     botAvatar = "",
     placeholderText = "Ask something",
+    fabGif = "",
     quickQuestions = [
       "Tell me about Tanya",
       "See case studies",
@@ -234,13 +236,29 @@ export default function FramerChatWidget(props: ChatWidgetProps) {
             className="chat-toggle-btn"
             style={{
               ...toggleButtonStyle,
-              backgroundColor: accentColor,
+              backgroundColor: "transparent",
+              padding: 0,
+              overflow: "hidden",
             }}
             aria-label="Open Chatbot Guide"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.9021 3.59005 15.6667 4.59852 17.1197L3.03362 20.2495C2.86877 20.5792 3.12356 20.9659 3.48624 20.9329L7.33235 20.5833C8.75677 20.8546 10.3333 21 12 21Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            {fabGif ? (
+              <img
+                src={fabGif}
+                alt="Chat"
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  borderRadius: "50%",
+                  display: "block",
+                }}
+              />
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.9021 3.59005 15.6667 4.59852 17.1197L3.03362 20.2495C2.86877 20.5792 3.12356 20.9659 3.48624 20.9329L7.33235 20.5833C8.75677 20.8546 10.3333 21 12 21Z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </button>
         </div>
       )}
@@ -444,6 +462,10 @@ addPropertyControls(FramerChatWidget, {
     type: ControlType.String,
     title: "Placeholder",
     defaultValue: "Ask something",
+  },
+  fabGif: {
+    type: ControlType.Image,
+    title: "FAB GIF",
   },
   quickQuestions: {
     type: ControlType.Array,
