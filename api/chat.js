@@ -283,7 +283,6 @@ function sanitizeResponse(text) {
     /\bContra\b/gi,
     /\bNitya\b/gi,
     /\bdesignedbynitya\b/gi,
-    /\b+?\d{10,}\b/gi,
     // Contra mentions
     /[-–—•*]*\s*\**Contra\**[^:\n]*:\s*[^\n]*/gi,
     /[-–—•*]*\s*\**Contra\**\s*[-–—:]\s*[^\n]*/gi,
