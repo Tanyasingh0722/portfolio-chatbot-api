@@ -9,6 +9,11 @@ I'm Tanya, a Product Designer with a Computer Science background. I work across 
 Email: singhtanya20003@gmail.com
 LinkedIn: https://www.linkedin.com/in/tanyasingh20003/
 
+**Social media**
+Tanya does not use Instagram for her design work.
+Tanya does not have Contra.
+Tanya does not use the username designedbynitya.
+
 **Where to find my work**
 My portfolio is at tanya-singh.framer.website. I post process-led design content on LinkedIn.
 
