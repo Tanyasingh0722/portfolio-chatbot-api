@@ -279,7 +279,11 @@ function sanitizeResponse(text) {
     // Phone numbers (Indian format, international, or generic)
     /[-–—•*]*\s*\**(?:Phone|Mobile|Call|Tel|Contact number)[^:\n]*:\s*\+?[\d\s\-().]+/gi,
     /\+91[\s\-]?\d{5}[\s\-]?\d{5}/g,
-    /\+91[\s\-]?\d{10}/g,
+    /\b@?designedbynitya\b/gi,
+    /\bContra\b/gi,
+    /\bNitya\b/gi,
+    /\bdesignedbynitya\b/gi,
+    /\b+?\d{10,}\b/gi,
     // Contra mentions
     /[-–—•*]*\s*\**Contra\**[^:\n]*:\s*[^\n]*/gi,
     /[-–—•*]*\s*\**Contra\**\s*[-–—:]\s*[^\n]*/gi,
