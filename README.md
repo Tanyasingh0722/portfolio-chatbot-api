@@ -99,3 +99,4 @@ When you click on the component in Framer, configure the properties in the right
 
 - **13 Question Cap**: The API and frontend track the session. Once a visitor asks 13 questions, the API blocks queries and asks them to connect with you directly.
 - **Exhibition Assistant Persona**: The chatbot only answers questions related to Tanya's work, experience, and projects. Unrelated prompts are pivoted back. Missing details will output a fallback: *"I don't have that detail in Tanya's portfolio knowledge yet, but you can contact Tanya directly."*
+
